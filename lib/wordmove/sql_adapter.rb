@@ -17,6 +17,8 @@ module Wordmove
       replace_wordpress_path!
     end
 
+    # private
+
     def replace_vhost!
       source_vhost = source_config[:vhost]
       dest_vhost = dest_config[:vhost]
@@ -39,45 +41,37 @@ module Wordmove
     def serialized_replace!(source_field, dest_field)
       length_delta = source_field.length - dest_field.length
 
-      File.open("#{sql_path}.tmp", 'w') do |temp_output|
-        File.open(sql_path, 'r') do |file_replace|  
-          while line = file_replace.gets  
-            line.gsub!(/s:(\d+):([\\]*['"])(.*?)\2;/) do |match|
-              length = $1.to_i
-              delimiter = $2
-              string = $3
+      foreach_sql_line do |line|
+        line.gsub!(/s:(\d+):([\\]*['"])(.*?)\2;/) do |match|
+          length = $1.to_i
+          delimiter = $2
+          string = $3
 
-              string.gsub!(/#{Regexp.escape(source_field)}/) do |match|
-                length -= length_delta
-                dest_field
-              end
-
-            %(s:#{length}:#{delimiter}#{string}#{delimiter};)
-
-           end # gsub
-
-           temp_output.write(line)
-
-          end # while
-        end  # file read
-      end # file write
-
-      File.rename("#{sql_path}.tmp", sql_path)
-
+          string.gsub!(/#{Regexp.escape(source_field)}/) do |match|
+            length -= length_delta
+            dest_field
+          end
+          %(s:#{length}:#{delimiter}#{string}#{delimiter};)
+        end
+      end
     end
 
     def simple_replace!(source_field, dest_field)
+      foreach_sql_line do |line|
+        line.gsub!(source_field, dest_field)
+      end
+    end
+
+    def foreach_sql_line
       File.open("#{sql_path}.tmp", 'w') do |temp_output|
-        File.open(sql_path, 'r') do |file_replace|  
-          while line = file_replace.gets  
-            line.gsub!(source_field, dest_field)
-            temp_output.write(line)
-          end # while
-        end  # file read
-      end # file write
-
+        File.open(sql_path, 'r') do |sql_file|
+          while line = sql_file.gets
+            result = yield line
+            temp_output.write(result)
+          end
+        end
+      end
       File.rename("#{sql_path}.tmp", sql_path)
-
     end
 
   end

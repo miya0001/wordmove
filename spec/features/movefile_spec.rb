@@ -23,7 +23,7 @@ describe Wordmove::Generators::Movefile do
     end
 
     it 'creates a Movefile' do
-      expect(File.exists?(movefile)).to be_true
+      expect(File.exists?(movefile)).to eq(true)
     end
 
     it 'fills local wordpress_path using shell path' do
